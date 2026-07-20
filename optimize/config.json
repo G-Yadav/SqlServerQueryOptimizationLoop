@@ -1,0 +1,6 @@
+{
+  "proc_name": "dbo.uspGetManagerEmployees",
+  "n_runs": 3,
+  "max_iterations": 10,
+  "max_consecutive_failures": 3
+}

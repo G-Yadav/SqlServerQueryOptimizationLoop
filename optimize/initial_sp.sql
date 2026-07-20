@@ -1,0 +1,13 @@
+-- Paste your stored procedure here.
+-- Example:
+--
+-- CREATE OR ALTER PROCEDURE dbo.YourProc
+--     @Filter1 NVARCHAR(100) = NULL,
+--     @Filter2 INT = NULL
+-- AS
+-- BEGIN
+--     SET NOCOUNT ON;
+--     SELECT ...
+--     FROM ...
+--     WHERE ...
+-- END

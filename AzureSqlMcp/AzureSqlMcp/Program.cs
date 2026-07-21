@@ -5,6 +5,11 @@ using ModelContextProtocol.Server;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+builder.Services.AddOptions<SqlConnectionOptions>()
+    .Configure(o => o.ConnectionString = builder.Configuration["AZURE_CONN_STRING"] ?? string.Empty)
+    .Validate(o => !string.IsNullOrEmpty(o.ConnectionString), "AZURE_CONN_STRING is not set.")
+    .ValidateOnStart();
+
 // Infrastructure
 builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
 builder.Services.AddSingleton<ITableSchemaRepository, TableSchemaRepository>();

@@ -1,16 +1,13 @@
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace AzureSqlMcp;
 
-public class SqlConnectionFactory(IConfiguration config) : ISqlConnectionFactory
+public class SqlConnectionFactory(IOptions<SqlConnectionOptions> options) : ISqlConnectionFactory
 {
-    private string ConnString =>
-        config["AZURE_CONN_STRING"] ?? throw new InvalidOperationException("AZURE_CONN_STRING is not set.");
-
     public async Task<SqlConnection> OpenConnectionAsync()
     {
-        var conn = new SqlConnection(ConnString);
+        var conn = new SqlConnection(options.Value.ConnectionString);
         await conn.OpenAsync();
         return conn;
     }

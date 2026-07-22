@@ -21,6 +21,17 @@ public class SpExecutionTools(ISpExecutionRepository repo)
         catch (Exception ex)         { return $"Benchmark failed: {ex.Message}"; }
     }
 
+    [McpServerTool, Description("Executes a stored procedure and returns the actual XML execution plan with runtime statistics. Useful for analysing query optimizer decisions, actual row counts, and index usage.")]
+    public async Task<string> GetExecutionPlan(
+        [Description("The name of the stored procedure to inspect, e.g. dbo.uspGetReport")] string spName,
+        [Description("Optional comma-separated parameters in the form @param=value, e.g. @StartDate=2024-01-01,@MaxRows=100")] string? parameters = null)
+    {
+        if (!IsValidSpName(spName)) return "Invalid stored procedure name.";
+        try { return await repo.GetExecutionPlanAsync(spName, parameters); }
+        catch (ArgumentException ex) { return $"Invalid parameters: {ex.Message}"; }
+        catch (Exception ex)         { return $"Execution plan failed: {ex.Message}"; }
+    }
+
     [McpServerTool, Description("Executes a stored procedure and returns the result set as CSV (no header, comma-separated, trimmed) for correctness verification against golden output.")]
     public async Task<string> ExecuteSp(
         [Description("The name of the stored procedure to execute, e.g. dbo.uspGetReport")] string spName,

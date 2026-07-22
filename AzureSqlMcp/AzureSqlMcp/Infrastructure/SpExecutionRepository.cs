@@ -45,6 +45,32 @@ public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepos
         return sb.Length > 0 ? sb.ToString().TrimEnd() : "(empty result set)";
     }
 
+    public async Task<string> GetExecutionPlanAsync(string spName, string? parameters)
+    {
+        await using var conn = await db.OpenConnectionAsync();
+        await new SqlCommand("SET STATISTICS XML ON", conn).ExecuteNonQueryAsync();
+
+        var sb = new StringBuilder();
+        {
+            var cmd = new SqlCommand(spName, conn) { CommandType = CommandType.StoredProcedure };
+            AddParameters(cmd, parameters);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            do
+            {
+                while (await reader.ReadAsync())
+                {
+                    if (reader.FieldCount != 1) continue;
+                    var value = reader.IsDBNull(0) ? null : reader.GetString(0);
+                    if (value?.TrimStart().StartsWith("<ShowPlanXML") == true)
+                        sb.AppendLine(value);
+                }
+            } while (await reader.NextResultAsync());
+        }
+
+        await new SqlCommand("SET STATISTICS XML OFF", conn).ExecuteNonQueryAsync();
+        return sb.Length > 0 ? sb.ToString().TrimEnd() : "No execution plan returned.";
+    }
+
     private static void AddParameters(SqlCommand cmd, string? parameters)
     {
         if (string.IsNullOrWhiteSpace(parameters)) return;

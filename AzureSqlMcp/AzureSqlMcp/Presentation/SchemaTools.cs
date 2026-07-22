@@ -13,4 +13,12 @@ public class SchemaTools(ITableSchemaRepository repo)
         var data = await repo.GetTableDdlAsync(tableName);
         return data == null ? $"Table '{tableName}' not found." : DdlFormatter.Format(data);
     }
+
+    [McpServerTool, Description("Returns the exact row count for a table or view.")]
+    public async Task<string> GetRowCount(
+        [Description("The table or view name, optionally schema-qualified (e.g. dbo.Orders or dbo.vw_ActiveCustomers)")] string objectName)
+    {
+        try { return await repo.GetRowCountAsync(objectName); }
+        catch (Exception ex) { return $"Row count failed: {ex.Message}"; }
+    }
 }

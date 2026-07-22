@@ -20,6 +20,31 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
         return new TableDdlData(schema, name, columns, constraints, indexes, foreignKeys);
     }
 
+    public async Task<string> GetRowCountAsync(string objectName)
+    {
+        await using var conn = await db.OpenConnectionAsync();
+
+        string? schemaName = null, objName = null;
+        {
+            var cmd = new SqlCommand(@"
+                SELECT s.name, o.name
+                FROM sys.objects o
+                JOIN sys.schemas s ON o.schema_id = s.schema_id
+                WHERE o.object_id = OBJECT_ID(@name) AND o.type IN ('U', 'V')", conn);
+            cmd.Parameters.AddWithValue("@name", objectName);
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (!await r.ReadAsync())
+                return $"'{objectName}' not found or is not a table or view.";
+            schemaName = r.GetString(0);
+            objName    = r.GetString(1);
+        }
+
+        // Names sourced from sys catalog, not user input — safe to interpolate
+        var countCmd = new SqlCommand($"SELECT COUNT_BIG(*) FROM [{schemaName}].[{objName}]", conn);
+        var result = await countCmd.ExecuteScalarAsync();
+        return ((long)result!).ToString("N0");
+    }
+
     private static async Task<int?> ResolveObjectIdAsync(SqlConnection conn, string tableName)
     {
         var cmd = new SqlCommand("SELECT OBJECT_ID(@name, 'U')", conn);

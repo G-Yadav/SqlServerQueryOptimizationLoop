@@ -1,7 +1,8 @@
+using AzureSqlMcp.Application;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 
-namespace AzureSqlMcp;
+namespace AzureSqlMcp.Infrastructure;
 
 public class SqlConnectionFactory(IOptions<SqlConnectionOptions> options) : ISqlConnectionFactory
 {

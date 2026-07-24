@@ -1,8 +1,9 @@
+using AzureSqlMcp.Application;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
 using ModelContextProtocol.Server;
 
-namespace AzureSqlMcp;
+namespace AzureSqlMcp.Presentation;
 
 [McpServerToolType]
 public class SpExecutionTools(ISpExecutionRepository repo)

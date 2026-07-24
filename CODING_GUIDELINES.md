@@ -82,6 +82,11 @@ Framework code (MCP, ASP.NET, EF Core) lives only in outer layers. If a domain o
 
 ## General C# Style
 
+**Namespaces**
+- Namespaces mirror the folder structure: `AzureSqlMcp.Application`, `AzureSqlMcp.Infrastructure`, `AzureSqlMcp.Presentation`.
+- Each file's namespace must match its directory. A file in `Infrastructure/` uses `namespace AzureSqlMcp.Infrastructure;`.
+- Cross-layer references are resolved with `using` directives, not by flattening namespaces (e.g. Infrastructure files add `using AzureSqlMcp.Application;`).
+
 **Naming**
 - Methods: `PascalCase`. Private helpers: `PascalCase`. Parameters and locals: `camelCase`.
 - Async methods end in `Async` unless they are MCP tool entry points (the framework controls those names).

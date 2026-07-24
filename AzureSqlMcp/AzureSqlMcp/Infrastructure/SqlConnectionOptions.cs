@@ -1,4 +1,4 @@
-namespace AzureSqlMcp;
+namespace AzureSqlMcp.Infrastructure;
 
 public sealed class SqlConnectionOptions
 {

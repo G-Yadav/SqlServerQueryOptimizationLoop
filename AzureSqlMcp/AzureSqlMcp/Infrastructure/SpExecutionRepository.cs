@@ -1,9 +1,10 @@
+using AzureSqlMcp.Application;
 using System.Data;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
 
-namespace AzureSqlMcp;
+namespace AzureSqlMcp.Infrastructure;
 
 public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepository
 {

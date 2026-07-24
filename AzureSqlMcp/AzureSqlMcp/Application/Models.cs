@@ -1,4 +1,4 @@
-namespace AzureSqlMcp;
+namespace AzureSqlMcp.Application;
 
 public record ColumnDef(
     string Name, string TypeStr,

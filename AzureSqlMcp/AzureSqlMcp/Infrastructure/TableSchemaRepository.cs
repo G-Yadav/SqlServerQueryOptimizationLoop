@@ -1,6 +1,7 @@
+using AzureSqlMcp.Application;
 using Microsoft.Data.SqlClient;
 
-namespace AzureSqlMcp;
+namespace AzureSqlMcp.Infrastructure;
 
 public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepository
 {

@@ -1,6 +1,6 @@
 using Microsoft.Data.SqlClient;
 
-namespace AzureSqlMcp;
+namespace AzureSqlMcp.Application;
 
 public interface ISqlConnectionFactory
 {

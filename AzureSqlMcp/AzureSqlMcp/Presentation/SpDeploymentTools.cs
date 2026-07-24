@@ -1,7 +1,8 @@
+using AzureSqlMcp.Application;
 using System.ComponentModel;
 using ModelContextProtocol.Server;
 
-namespace AzureSqlMcp;
+namespace AzureSqlMcp.Presentation;
 
 [McpServerToolType]
 public class SpDeploymentTools(ISpDeploymentRepository repo)

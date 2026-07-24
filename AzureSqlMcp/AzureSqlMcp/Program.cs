@@ -1,4 +1,6 @@
-using AzureSqlMcp;
+using AzureSqlMcp.Application;
+using AzureSqlMcp.Infrastructure;
+using AzureSqlMcp.Presentation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Server;

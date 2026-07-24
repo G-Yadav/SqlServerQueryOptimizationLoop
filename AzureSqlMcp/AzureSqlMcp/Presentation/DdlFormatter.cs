@@ -1,6 +1,7 @@
+using AzureSqlMcp.Application;
 using System.Text;
 
-namespace AzureSqlMcp;
+namespace AzureSqlMcp.Presentation;
 
 public static class DdlFormatter
 {

@@ -109,6 +109,12 @@ Framework code (MCP, ASP.NET, EF Core) lives only in outer layers. If a domain o
 - Use verbatim string literals (`@"..."`) for multi-line SQL. Indent SQL keywords consistently.
 - Never concatenate user-supplied values into SQL strings. Always use `cmd.Parameters.AddWithValue`.
 
+**Static helpers**
+- Use a `static` helper class for logic shared across two or more classes when the method is pure: same input always produces same output, no I/O, no configuration, no shared state.
+- Never let a static helper reach into external dependencies directly (database, file system, configuration, singletons) — those are hidden dependencies that can't be swapped in tests. Pass them as parameters or inject them via DI instead.
+- Prefer a static helper over a base class when the only motivation is code reuse. Inheritance implies shared identity ("is-a"), not shared utility.
+- If a helper must be replaceable in tests (e.g. the helper itself does I/O), register it in the DI container as an interface instead.
+
 **Brevity**
 - Prefer expression-bodied members for single-expression methods.
 - Use `switch` expressions over `if/else if` chains for type/value dispatch (e.g. type-name → SQL type string).

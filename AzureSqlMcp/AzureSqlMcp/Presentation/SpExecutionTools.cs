@@ -1,6 +1,5 @@
 using AzureSqlMcp.Application;
 using System.ComponentModel;
-using System.Text.RegularExpressions;
 using ModelContextProtocol.Server;
 
 namespace AzureSqlMcp.Presentation;
@@ -8,39 +7,21 @@ namespace AzureSqlMcp.Presentation;
 [McpServerToolType]
 public class SpExecutionTools(ISpExecutionRepository repo)
 {
-    private static bool IsValidSpName(string name) =>
-        Regex.IsMatch(name, @"^[\w\.\[\]]+$");
-
     [McpServerTool, Description("Executes a stored procedure by name and returns STATISTICS IO and STATISTICS TIME output for performance analysis.")]
-    public async Task<string> RunBenchmark(
+    public Task<string> RunBenchmark(
         [Description("The name of the stored procedure to execute, e.g. dbo.uspGetManagerEmployees")] string spName,
         [Description("Optional comma-separated parameters in the form @param=value, e.g. @BusinessEntityID=1,@MaxDepth=3")] string? parameters = null)
-    {
-        if (!IsValidSpName(spName)) return "Invalid stored procedure name.";
-        try { return await repo.RunBenchmarkAsync(spName, parameters); }
-        catch (ArgumentException ex) { return $"Invalid parameters: {ex.Message}"; }
-        catch (Exception ex)         { return $"Benchmark failed: {ex.Message}"; }
-    }
+        => SpToolHelper.SafeExecute(spName, "Benchmark failed", () => repo.RunBenchmarkAsync(spName, parameters));
 
     [McpServerTool, Description("Executes a stored procedure and returns the actual XML execution plan with runtime statistics. Useful for analysing query optimizer decisions, actual row counts, and index usage.")]
-    public async Task<string> GetExecutionPlan(
+    public Task<string> GetExecutionPlan(
         [Description("The name of the stored procedure to inspect, e.g. dbo.uspGetReport")] string spName,
         [Description("Optional comma-separated parameters in the form @param=value, e.g. @StartDate=2024-01-01,@MaxRows=100")] string? parameters = null)
-    {
-        if (!IsValidSpName(spName)) return "Invalid stored procedure name.";
-        try { return await repo.GetExecutionPlanAsync(spName, parameters); }
-        catch (ArgumentException ex) { return $"Invalid parameters: {ex.Message}"; }
-        catch (Exception ex)         { return $"Execution plan failed: {ex.Message}"; }
-    }
+        => SpToolHelper.SafeExecute(spName, "Execution plan failed", () => repo.GetExecutionPlanAsync(spName, parameters));
 
     [McpServerTool, Description("Executes a stored procedure and returns the result set as CSV (no header, comma-separated, trimmed) for correctness verification against golden output.")]
-    public async Task<string> ExecuteSp(
+    public Task<string> ExecuteSp(
         [Description("The name of the stored procedure to execute, e.g. dbo.uspGetReport")] string spName,
         [Description("Optional comma-separated parameters in the form @param=value, e.g. @StartDate=2024-01-01,@MaxRows=100")] string? parameters = null)
-    {
-        if (!IsValidSpName(spName)) return "Invalid stored procedure name.";
-        try { return await repo.ExecuteSpAsync(spName, parameters); }
-        catch (ArgumentException ex) { return $"Invalid parameters: {ex.Message}"; }
-        catch (Exception ex)         { return $"Execution failed: {ex.Message}"; }
-    }
+        => SpToolHelper.SafeExecute(spName, "Execution failed", () => repo.ExecuteSpAsync(spName, parameters));
 }

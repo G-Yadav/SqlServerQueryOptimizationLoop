@@ -105,6 +105,65 @@ Every piece of logic should have a single, authoritative home. Duplication is a 
 
 ---
 
+## Immutability and Mutation Boundaries
+
+### Prefer immutable types by default
+
+Reach for immutable constructs first. Only introduce mutable state when there is no reasonable alternative.
+
+- **Fields**: declare as `readonly` unless the field genuinely changes after construction.
+- **Properties**: prefer `init`-only over `set` when the value is set once at object creation.
+- **Value types**: use `record` or `record struct` for data-carrying types — positional records are immutable by default.
+- **Collections**: expose `IReadOnlyList<T>` / `IReadOnlyDictionary<K, V>` at boundaries; accept mutability only inside the owning class.
+- **Methods**: mark pure helpers `static`. A `static` method cannot access instance state, making it verifiably side-effect-free within the class.
+
+```csharp
+// Bad — mutable field with no reason to change after construction
+private string _connectionString;
+
+// Good — immutable after construction
+private readonly string _connectionString;
+
+// Bad — settable property on a data record
+public class BenchmarkResult { public long LogicalReads { get; set; } }
+
+// Good — immutable record
+public record BenchmarkResult(long LogicalReads, long ElapsedMs, long CpuMs);
+```
+
+### Segregate the functional core from the mutable shell
+
+Structure code so that pure, input→output logic is clearly separated from code that mutates state or performs I/O. This is sometimes called the **Functional Core / Imperative Shell** pattern.
+
+- **Functional core**: methods that take data in and return data out — no database calls, no file I/O, no writes to shared fields. These are always safe to call from any context, easy to unit-test without mocks, and safe under concurrent access by definition.
+- **Imperative shell**: thin wrappers that open connections, read configuration, coordinate I/O, and call into the functional core. This is where all side effects live.
+
+```csharp
+// Functional core — pure transformation, no I/O
+internal static string FormatBenchmarkResult(BenchmarkResult result)
+    => $"logical_reads: {result.LogicalReads}\ncpu_ms: {result.CpuMs}";
+
+// Imperative shell — I/O + coordination, calls the core
+public async Task<string> RunBenchmarkAsync(string spName, string? parameters, CancellationToken ct)
+{
+    await using var conn = await db.OpenConnectionAsync(ct);
+    var result = await ExecuteBenchmarkQuery(conn, spName, parameters, ct);
+    return FormatBenchmarkResult(result);   // delegates formatting to the pure core
+}
+```
+
+### Mutable state is a concurrency boundary — treat it as one
+
+Mutable shared state is not forbidden — caches, counters, and pools are legitimate. But every mutable field on a class that is registered as a Singleton (or otherwise shared across calls) must be treated as a concurrency boundary:
+
+- Mark the field clearly so reviewers know it is mutable and shared.
+- Use `Interlocked`, `lock`, or a concurrent collection — never a plain `int` or `Dictionary<,>` written from multiple threads.
+- When adding or reviewing mutable state to any Singleton, explicitly ask: "what happens if two calls touch this field at the same time?"
+
+Absence of mutable state is the strongest possible thread-safety guarantee. Strive to keep Singleton classes stateless; if a class cannot be stateless, document why and audit its locking carefully.
+
+---
+
 ## General C# Style
 
 **Namespaces**

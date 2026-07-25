@@ -5,18 +5,18 @@ namespace AzureSqlMcp.Infrastructure;
 
 public class SpInspectionRepository(ISqlConnectionFactory db) : ISpInspectionRepository
 {
-    public async Task<string?> GetDefinitionAsync(string spName)
+    public async Task<string?> GetDefinitionAsync(string spName, CancellationToken ct = default)
     {
-        await using var conn = await db.OpenConnectionAsync();
+        await using var conn = await db.OpenConnectionAsync(ct);
         var cmd = new SqlCommand("SELECT OBJECT_DEFINITION(OBJECT_ID(@name))", conn);
         cmd.Parameters.AddWithValue("@name", spName);
-        var result = await cmd.ExecuteScalarAsync();
+        var result = await cmd.ExecuteScalarAsync(ct);
         return result == null || result == DBNull.Value ? null : result.ToString();
     }
 
-    public async Task<SpExecutionStats?> GetExecutionStatsAsync(string spName)
+    public async Task<SpExecutionStats?> GetExecutionStatsAsync(string spName, CancellationToken ct = default)
     {
-        await using var conn = await db.OpenConnectionAsync();
+        await using var conn = await db.OpenConnectionAsync(ct);
         var cmd = new SqlCommand(@"
             SELECT
                 execution_count,
@@ -28,8 +28,8 @@ public class SpInspectionRepository(ISqlConnectionFactory db) : ISpInspectionRep
             JOIN sys.objects o ON ps.object_id = o.object_id
             WHERE o.name = @name", conn);
         cmd.Parameters.AddWithValue("@name", spName);
-        await using var r = await cmd.ExecuteReaderAsync();
-        if (!await r.ReadAsync()) return null;
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        if (!await r.ReadAsync(ct)) return null;
         return new SpExecutionStats(
             ExecutionCount:   Convert.ToInt64(r["execution_count"]),
             AvgElapsedUs:     Convert.ToInt64(r["avg_elapsed_us"]),

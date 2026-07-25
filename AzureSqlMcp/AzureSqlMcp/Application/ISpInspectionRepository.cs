@@ -2,6 +2,6 @@ namespace AzureSqlMcp.Application;
 
 public interface ISpInspectionRepository
 {
-    Task<string?> GetDefinitionAsync(string spName);
-    Task<SpExecutionStats?> GetExecutionStatsAsync(string spName);
+    Task<string?> GetDefinitionAsync(string spName, CancellationToken ct = default);
+    Task<SpExecutionStats?> GetExecutionStatsAsync(string spName, CancellationToken ct = default);
 }

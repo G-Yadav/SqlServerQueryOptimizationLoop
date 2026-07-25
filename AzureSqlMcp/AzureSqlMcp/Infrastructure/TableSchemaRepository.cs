@@ -5,25 +5,25 @@ namespace AzureSqlMcp.Infrastructure;
 
 public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepository
 {
-    public async Task<TableDdlData?> GetTableDdlAsync(string tableName)
+    public async Task<TableDdlData?> GetTableDdlAsync(string tableName, CancellationToken ct = default)
     {
-        await using var conn = await db.OpenConnectionAsync();
+        await using var conn = await db.OpenConnectionAsync(ct);
 
-        var objectId = await ResolveObjectIdAsync(conn, tableName);
+        var objectId = await ResolveObjectIdAsync(conn, tableName, ct);
         if (objectId == null) return null;
 
-        var (schema, name) = await ReadTableNameAsync(conn, objectId.Value);
-        var columns     = await ReadColumnsAsync(conn, objectId.Value);
-        var constraints = await ReadConstraintsAsync(conn, objectId.Value);
-        var indexes     = await ReadIndexesAsync(conn, objectId.Value);
-        var foreignKeys = await ReadForeignKeysAsync(conn, objectId.Value);
+        var (schema, name) = await ReadTableNameAsync(conn, objectId.Value, ct);
+        var columns     = await ReadColumnsAsync(conn, objectId.Value, ct);
+        var constraints = await ReadConstraintsAsync(conn, objectId.Value, ct);
+        var indexes     = await ReadIndexesAsync(conn, objectId.Value, ct);
+        var foreignKeys = await ReadForeignKeysAsync(conn, objectId.Value, ct);
 
         return new TableDdlData(schema, name, columns, constraints, indexes, foreignKeys);
     }
 
-    public async Task<string> GetRowCountAsync(string objectName)
+    public async Task<string> GetRowCountAsync(string objectName, CancellationToken ct = default)
     {
-        await using var conn = await db.OpenConnectionAsync();
+        await using var conn = await db.OpenConnectionAsync(ct);
 
         string? schemaName = null, objName = null;
         {
@@ -33,8 +33,8 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
                 JOIN sys.schemas s ON o.schema_id = s.schema_id
                 WHERE o.object_id = OBJECT_ID(@name) AND o.type IN ('U', 'V')", conn);
             cmd.Parameters.AddWithValue("@name", objectName);
-            await using var r = await cmd.ExecuteReaderAsync();
-            if (!await r.ReadAsync())
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            if (!await r.ReadAsync(ct))
                 return $"'{objectName}' not found or is not a table or view.";
             schemaName = r.GetString(0);
             objName    = r.GetString(1);
@@ -42,28 +42,28 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
 
         // Names sourced from sys catalog, not user input — safe to interpolate
         var countCmd = new SqlCommand($"SELECT COUNT_BIG(*) FROM [{schemaName}].[{objName}]", conn);
-        var result = await countCmd.ExecuteScalarAsync();
+        var result = await countCmd.ExecuteScalarAsync(ct);
         return ((long)result!).ToString("N0");
     }
 
-    private static async Task<int?> ResolveObjectIdAsync(SqlConnection conn, string tableName)
+    private static async Task<int?> ResolveObjectIdAsync(SqlConnection conn, string tableName, CancellationToken ct)
     {
         var cmd = new SqlCommand("SELECT OBJECT_ID(@name, 'U')", conn);
         cmd.Parameters.AddWithValue("@name", tableName);
-        var result = await cmd.ExecuteScalarAsync();
+        var result = await cmd.ExecuteScalarAsync(ct);
         return result == null || result == DBNull.Value ? null : (int)result;
     }
 
-    private static async Task<(string Schema, string Name)> ReadTableNameAsync(SqlConnection conn, int objectId)
+    private static async Task<(string Schema, string Name)> ReadTableNameAsync(SqlConnection conn, int objectId, CancellationToken ct)
     {
         var cmd = new SqlCommand("SELECT SCHEMA_NAME(schema_id), name FROM sys.tables WHERE object_id = @id", conn);
         cmd.Parameters.AddWithValue("@id", objectId);
-        await using var r = await cmd.ExecuteReaderAsync();
-        await r.ReadAsync();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        await r.ReadAsync(ct);
         return (r.GetString(0), r.GetString(1));
     }
 
-    private static async Task<IReadOnlyList<ColumnDef>> ReadColumnsAsync(SqlConnection conn, int objectId)
+    private static async Task<IReadOnlyList<ColumnDef>> ReadColumnsAsync(SqlConnection conn, int objectId, CancellationToken ct)
     {
         var cmd = new SqlCommand(@"
             SELECT
@@ -86,8 +86,8 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
         cmd.Parameters.AddWithValue("@id", objectId);
 
         var cols = new List<ColumnDef>();
-        await using var r = await cmd.ExecuteReaderAsync();
-        while (await r.ReadAsync())
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
         {
             var typeName   = r.GetString(1);
             var maxLen     = r.GetInt16(2);
@@ -117,7 +117,7 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
         return cols;
     }
 
-    private static async Task<IReadOnlyList<ConstraintDef>> ReadConstraintsAsync(SqlConnection conn, int objectId)
+    private static async Task<IReadOnlyList<ConstraintDef>> ReadConstraintsAsync(SqlConnection conn, int objectId, CancellationToken ct)
     {
         var cmd = new SqlCommand(@"
             SELECT
@@ -133,8 +133,8 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
         cmd.Parameters.AddWithValue("@id", objectId);
 
         var defs = new List<ConstraintDef>();
-        await using var r = await cmd.ExecuteReaderAsync();
-        while (await r.ReadAsync())
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
             defs.Add(new ConstraintDef(
                 Keyword: r.GetString(0) == "PK" ? "PRIMARY KEY" : "UNIQUE",
                 Name:    r.GetString(1),
@@ -142,7 +142,7 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
         return defs;
     }
 
-    private static async Task<IReadOnlyList<IndexDef>> ReadIndexesAsync(SqlConnection conn, int objectId)
+    private static async Task<IReadOnlyList<IndexDef>> ReadIndexesAsync(SqlConnection conn, int objectId, CancellationToken ct)
     {
         var cmd = new SqlCommand(@"
             SELECT
@@ -164,8 +164,8 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
         cmd.Parameters.AddWithValue("@id", objectId);
 
         var defs = new List<IndexDef>();
-        await using var r = await cmd.ExecuteReaderAsync();
-        while (await r.ReadAsync())
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
             defs.Add(new IndexDef(
                 Name:            r.GetString(0),
                 IsClustered:     r.GetString(1) == "CLUSTERED",
@@ -175,7 +175,7 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
         return defs;
     }
 
-    private static async Task<IReadOnlyList<ForeignKeyDef>> ReadForeignKeysAsync(SqlConnection conn, int objectId)
+    private static async Task<IReadOnlyList<ForeignKeyDef>> ReadForeignKeysAsync(SqlConnection conn, int objectId, CancellationToken ct)
     {
         var cmd = new SqlCommand(@"
             SELECT
@@ -195,8 +195,8 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
         cmd.Parameters.AddWithValue("@id", objectId);
 
         var defs = new List<ForeignKeyDef>();
-        await using var r = await cmd.ExecuteReaderAsync();
-        while (await r.ReadAsync())
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
         {
             var del = r.GetString(4);
             var upd = r.GetString(5);

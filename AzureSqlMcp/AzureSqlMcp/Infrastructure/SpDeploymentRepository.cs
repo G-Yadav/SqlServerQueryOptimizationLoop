@@ -13,13 +13,13 @@ public class SpDeploymentRepository(ISqlConnectionFactory db) : ISpDeploymentRep
         "ALTER PROC"
     ];
 
-    public async Task DeployAsync(string sql)
+    public async Task DeployAsync(string sql, CancellationToken ct = default)
     {
         var trimmed = sql.TrimStart();
         if (!ValidPrefixes.Any(p => trimmed.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
             throw new ArgumentException("Only ALTER PROCEDURE or CREATE OR ALTER PROCEDURE statements are allowed.");
 
-        await using var conn = await db.OpenConnectionAsync();
-        await new SqlCommand(sql, conn).ExecuteNonQueryAsync();
+        await using var conn = await db.OpenConnectionAsync(ct);
+        await new SqlCommand(sql, conn).ExecuteNonQueryAsync(ct);
     }
 }

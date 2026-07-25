@@ -4,5 +4,5 @@ namespace AzureSqlMcp.Application;
 
 public interface ISqlConnectionFactory
 {
-    Task<SqlConnection> OpenConnectionAsync();
+    Task<SqlConnection> OpenConnectionAsync(CancellationToken ct = default);
 }

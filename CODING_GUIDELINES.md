@@ -10,8 +10,8 @@ Each class and method does one thing. If a method's name requires "and" to descr
 public async Task<string> ParseAndRunQuery(string sql) { ... }
 
 // Good — each method has one job
-private static string? AddParameters(SqlCommand cmd, string? parameters) { ... }
-public static async Task<string> RunBenchmark(string spName, string? parameters) { ... }
+private static void AddParameters(SqlCommand cmd, string? parameters) { ... }
+public async Task<string> RunBenchmark(string spName, string? parameters) { ... }
 ```
 
 A tool method is responsible for its MCP contract (input validation + result formatting). Shared mechanics (connection open, parameter parsing) belong in private helpers — not inlined into every tool.
@@ -29,12 +29,17 @@ Don't force callers to depend on methods they don't use. If the tool surface gro
 High-level logic should not depend on the concrete `SqlConnection` constructor directly. Depend on abstractions at boundaries — pass a connection factory or `IDbConnection` rather than calling `new SqlConnection(ConnString)` in every method. This also makes unit testing possible without a live database.
 
 ```csharp
-// Preferred — connection creation is centralised and swappable
-private static async Task<SqlConnection> OpenConnectionAsync()
+// Bad — concrete dependency hardcoded in every method
+var conn = new SqlConnection(Environment.GetEnvironmentVariable("AZURE_CONN_STRING"));
+
+// Good — depend on the abstraction; infrastructure implements it
+public class SpExecutionRepository(ISqlConnectionFactory db)
 {
-    var conn = new SqlConnection(ConnString);
-    await conn.OpenAsync();
-    return conn;
+    public async Task<string> RunBenchmarkAsync(string spName, string? parameters)
+    {
+        await using var conn = await db.OpenConnectionAsync();
+        // ...
+    }
 }
 ```
 
@@ -80,6 +85,26 @@ Framework code (MCP, ASP.NET, EF Core) lives only in outer layers. If a domain o
 
 ---
 
+## DRY — Don't Repeat Yourself
+
+Every piece of logic should have a single, authoritative home. Duplication is a maintenance liability: when the logic changes, every copy must change in sync, and they rarely do.
+
+**Identifying duplication**
+- Two or more methods with identical or near-identical bodies (same guard, same try/catch, same SQL query structure) are candidates for extraction.
+- Spot the variation: if two blocks differ only in one value (a label string, a method call, a column name), the common shell belongs in a helper and the varying part becomes a parameter.
+- Inconsistency is a sign of hidden duplication — if one tool validates its input and an equivalent tool does not, the validation is probably duplicated inconsistently rather than shared.
+
+**Where to put shared logic**
+- Within a class: extract a `private` helper immediately when two methods share logic. Mark it `static` only if it doesn't access instance state.
+- Across classes in the same layer: extract an `internal static` helper class (see **Static helpers**).
+- Across layers: duplication across layer boundaries usually means a concept is missing from the Application layer — define an interface or model there rather than copying the logic.
+
+**Limits**
+- Don't collapse two similar-looking blocks that represent genuinely different concepts. Accidental similarity is not duplication.
+- Don't extract a helper so generic that it obscures what it does. The goal is to name the concept, not to minimise line count.
+
+---
+
 ## General C# Style
 
 **Namespaces**
@@ -102,7 +127,7 @@ Framework code (MCP, ASP.NET, EF Core) lives only in outer layers. If a domain o
 - Validate inputs at the top of each tool method before opening a connection.
 
 **Private helpers**
-- Extract any logic shared by two or more tool methods into a `private static` helper immediately — don't wait for a third copy.
+- Extract any logic shared by two or more tool methods into a `private` helper immediately — don't wait for a third copy. Mark it `static` only if it doesn't access instance state.
 - Helpers return data or an error string (`string?` for nullable error); they do not write to the database or produce side effects beyond their name implies.
 
 **SQL strings**

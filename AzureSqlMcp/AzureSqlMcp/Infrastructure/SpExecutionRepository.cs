@@ -18,8 +18,8 @@ public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepos
         conn.InfoMessage += (_, e) => messages.AppendLine(e.Message);
 
         await new SqlCommand("SET STATISTICS IO ON; SET STATISTICS TIME ON;", conn).ExecuteNonQueryAsync();
-        await cmd.ExecuteNonQueryAsync();
-        await new SqlCommand("SET STATISTICS IO OFF; SET STATISTICS TIME OFF;", conn).ExecuteNonQueryAsync();
+        try   { await cmd.ExecuteNonQueryAsync(); }
+        finally { await new SqlCommand("SET STATISTICS IO OFF; SET STATISTICS TIME OFF;", conn).ExecuteNonQueryAsync(); }
 
         return messages.Length > 0 ? messages.ToString() : "No statistics returned.";
     }
@@ -52,6 +52,7 @@ public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepos
         await new SqlCommand("SET STATISTICS XML ON", conn).ExecuteNonQueryAsync();
 
         var sb = new StringBuilder();
+        try
         {
             var cmd = new SqlCommand(spName, conn) { CommandType = CommandType.StoredProcedure };
             AddParameters(cmd, parameters);
@@ -67,8 +68,10 @@ public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepos
                 }
             } while (await reader.NextResultAsync());
         }
-
-        await new SqlCommand("SET STATISTICS XML OFF", conn).ExecuteNonQueryAsync();
+        finally
+        {
+            await new SqlCommand("SET STATISTICS XML OFF", conn).ExecuteNonQueryAsync();
+        }
         return sb.Length > 0 ? sb.ToString().TrimEnd() : "No execution plan returned.";
     }
 

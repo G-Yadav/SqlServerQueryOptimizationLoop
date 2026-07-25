@@ -27,16 +27,18 @@ dotnet run
 dotnet build
 ```
 
-The MCP server exposes four tools over stdio (ModelContextProtocol 2.0 preview):
+The MCP server exposes eight tools over stdio (ModelContextProtocol 2.0 preview):
 
 | Tool | Purpose |
 |---|---|
 | `deploy_sp` | Deploy `CREATE OR ALTER PROCEDURE` or `ALTER PROCEDURE` SQL |
 | `execute_sp` | Run a proc and return result set as CSV (correctness checks) |
 | `run_benchmark` | Run a proc with `SET STATISTICS IO/TIME ON` and return raw output |
+| `get_execution_plan` | Run a proc and return the actual XML execution plan with runtime statistics |
 | `get_sp_definition` | Read current proc definition from the database |
 | `get_execution_stats` | Read DMV-based historical execution stats |
 | `get_table_ddl` | Retrieve table DDL: columns, types, PK, unique constraints, indexes, foreign keys |
+| `get_row_count` | Return exact row count for a table or view |
 
 `deploy_sp` rejects SQL that doesn't start with `ALTER PROCEDURE` or `CREATE OR ALTER PROCEDURE`. Parameters for `execute_sp` and `run_benchmark` are passed as comma-separated `@param=value` strings — values containing commas or equals signs cannot be safely passed and will cause a hard stop.
 

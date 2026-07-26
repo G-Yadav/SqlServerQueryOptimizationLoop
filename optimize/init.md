@@ -21,7 +21,7 @@ Read `optimize/initial_sp.sql`. If the file contains only the placeholder commen
 
 ## Step 2 — Deploy the initial stored procedure
 
-Read `optimize/initial_sp.sql`. Verify the DDL header starts with `CREATE OR ALTER PROCEDURE` or `ALTER PROCEDURE`. If it starts with `CREATE PROCEDURE` only, stop and tell the user to change it to `CREATE OR ALTER PROCEDURE` — the MCP tool requires one of those two forms.
+Read `optimize/initial_sp.sql`. Verify the DDL header starts with `CREATE OR ALTER PROCEDURE` or `ALTER PROCEDURE`. If it starts with `CREATE PROCEDURE` only, stop and tell the user to change it to `CREATE OR ALTER PROCEDURE`.
 
 Call `deploy_sp` with the full content of `initial_sp.sql`.
 
@@ -35,8 +35,6 @@ Write the content of `optimize/initial_sp.sql` to:
 - `optimize/current_sp.sql`
 - `optimize/candidate_sp.sql`
 
-(Both start as identical copies of the initial SP.)
-
 ---
 
 ## Step 4 — Capture golden outputs
@@ -46,11 +44,10 @@ Find all test case directories: `optimize/test_cases/tc_*/`, sorted by name. For
 For each test case:
 1. Read its `params.sql` and extract the parameter values from the `EXEC` statement as a comma-separated `@param=value` string.
    - Strip surrounding single-quotes from string values only if the value contains no commas or equals signs
-   - **Hard stop:** if any parameter value (after removing quotes) contains a comma or equals sign, stop immediately and output: `PARAMETER ERROR: value in <tc_dir>/params.sql cannot be safely passed via the MCP parameter format (contains comma or equals sign). Simplify the value before continuing.` Do not proceed with init.
+   - **Hard stop:** if any parameter value (after removing quotes) contains a comma or equals sign, stop immediately: `PARAMETER ERROR: value in <tc_dir>/params.sql cannot be safely passed (contains comma or equals sign).`
    - Pass `null` if the proc takes no parameters
-2. Call `execute_sp` with `spName = proc_name` (from config.json) and the extracted parameters.
-3. Write the returned output to `optimize/test_cases/<tc_dir>/golden_output.csv` (no trailing newline).
-4. Print: `<tc_dir>: <N> row(s) captured`
+2. Call `execute_sp` with `spName = proc_name`, the extracted parameters, and `outputFilePath = optimize/test_cases/<tc_dir>/golden_output.csv`
+3. Print: `<tc_dir>: <N> row(s) captured` (the row count is in the tool's return value)
 
 ---
 
@@ -80,7 +77,6 @@ Write `optimize/state.json` with this exact structure:
 ```json
 {
   "iteration": 0,
-  "max_iterations": <config.max_iterations>,
   "best_score": <baseline_total_lr>,
   "best_score_breakdown": {
     "<tc_dir>": {
@@ -97,30 +93,17 @@ Write `optimize/state.json` with this exact structure:
 
 ---
 
-## Step 7 — Write benchmark_log.md
+## Step 7 — Verify skill files
 
-Write `optimize/benchmark_log.md` with this content:
+Check that both of the following exist:
+- `optimize/skills/techniques.md`
+- `optimize/skills/findings.md`
 
-```markdown
-# Benchmark Log
-
-## Baseline — initial_sp.sql
-- **Total logical reads:** <baseline_total_lr>
-- Per test case:
-  - <tc_dir>: <avg_lr> LR | <avg_cpu>ms CPU
-```
+If either is missing, stop and tell the user to create the missing file before running the loop. Both are required.
 
 ---
 
-## Step 8 — Verify seed skill file
-
-Check whether `optimize/skills/iter_00_sql_server_optimization.md` exists.
-- If it does: print `Skill seed: iter_00_sql_server_optimization.md`
-- If it does not: print a warning that the loop will start without a seeded skill file.
-
----
-
-## Step 9 — Print summary
+## Step 8 — Print summary
 
 ```
 Initialization complete.

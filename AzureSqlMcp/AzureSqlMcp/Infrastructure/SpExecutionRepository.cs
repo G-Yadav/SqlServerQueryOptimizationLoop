@@ -24,13 +24,13 @@ public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepos
         return messages.Length > 0 ? messages.ToString() : "No statistics returned.";
     }
 
-    public async Task<string> ExecuteSpAsync(string spName, string? parameters, CancellationToken ct = default)
+    public async Task<string> ExecuteSpAsync(string spName, string? parameters, string? outputFilePath = null, CancellationToken ct = default)
     {
         await using var conn = await db.OpenConnectionAsync(ct);
         var cmd = new SqlCommand(spName, conn) { CommandType = CommandType.StoredProcedure };
         AddParameters(cmd, parameters);
 
-        var sb = new StringBuilder();
+        var rows = new List<string>();
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         do
         {
@@ -39,11 +39,17 @@ public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepos
                 var cols = new string[reader.FieldCount];
                 for (var i = 0; i < reader.FieldCount; i++)
                     cols[i] = reader.IsDBNull(i) ? "" : reader.GetValue(i).ToString()!.Trim();
-                sb.AppendLine(string.Join(",", cols));
+                rows.Add(string.Join(",", cols));
             }
         } while (await reader.NextResultAsync(ct));
 
-        return sb.Length > 0 ? sb.ToString().TrimEnd() : "(empty result set)";
+        if (outputFilePath is not null)
+        {
+            await File.WriteAllLinesAsync(outputFilePath, rows, ct);
+            return $"{rows.Count} rows written to {outputFilePath}";
+        }
+
+        return rows.Count > 0 ? string.Join(Environment.NewLine, rows) : "(empty result set)";
     }
 
     public async Task<string> GetExecutionPlanAsync(string spName, string? parameters, CancellationToken ct = default)

@@ -21,10 +21,11 @@ public class SpExecutionTools(ISpExecutionRepository repo)
         CancellationToken ct = default)
         => ToolHelper.SafeExecute(spName, "Execution plan failed", () => repo.GetExecutionPlanAsync(spName, parameters, ct));
 
-    [McpServerTool, Description("Executes a stored procedure and returns the result set as CSV (no header, comma-separated, trimmed) for correctness verification against golden output.")]
+    [McpServerTool, Description("Executes a stored procedure and returns the result set as CSV (no header, comma-separated, trimmed). When outputFilePath is provided the CSV is written directly to that file and a row count is returned instead — use this for golden output capture and correctness checks.")]
     public Task<string> ExecuteSp(
         [Description("The name of the stored procedure to execute, e.g. dbo.uspGetReport")] string spName,
         [Description("Optional comma-separated parameters in the form @param=value, e.g. @StartDate=2024-01-01,@MaxRows=100")] string? parameters = null,
+        [Description("Optional absolute file path. When supplied the CSV rows are written to this file and a row count confirmation is returned instead of the CSV content.")] string? outputFilePath = null,
         CancellationToken ct = default)
-        => ToolHelper.SafeExecute(spName, "Execution failed", () => repo.ExecuteSpAsync(spName, parameters, ct));
+        => ToolHelper.SafeExecute(spName, "Execution failed", () => repo.ExecuteSpAsync(spName, parameters, outputFilePath, ct));
 }

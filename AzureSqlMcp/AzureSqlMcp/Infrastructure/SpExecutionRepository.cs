@@ -84,7 +84,7 @@ public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepos
     private static void AddParameters(SqlCommand cmd, string? parameters)
     {
         if (string.IsNullOrWhiteSpace(parameters)) return;
-        foreach (var param in parameters.Split(','))
+        foreach (var param in parameters.Split(';'))
         {
             var parts = param.Trim().Split('=', 2);
             if (parts.Length != 2)

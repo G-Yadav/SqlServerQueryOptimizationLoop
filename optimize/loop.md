@@ -80,10 +80,9 @@ Call `deploy_sp` with the full content of `optimize/candidate_sp.sql`. This depl
 Find all test case directories: `optimize/test_cases/tc_*/`, sorted by name.
 
 For each test case:
-1. Read its `params.sql` and extract the parameter values from the `EXEC` statement as a comma-separated `@param=value` string.
-   - Strip surrounding single-quotes from string values only if the value contains no commas or equals signs
-   - **Hard stop:** if any parameter value (after removing quotes) contains a comma or equals sign, output: `PARAMETER ERROR: value in <tc_dir>/params.sql cannot be safely passed (contains comma or equals sign).` Then stop without updating state.
-   - Pass `null` if the proc takes no parameters
+1. Read `params.sql` — the file contains a raw semicolon-separated `@param=value` string (e.g. `@BusinessEntityID=2;@MaxDepth=3`), or is empty/absent if the proc takes no parameters.
+   - **Hard stop:** if any parameter value contains a semicolon, output: `PARAMETER ERROR: value in <tc_dir>/params.sql cannot be safely passed (contains semicolon).` Then stop without updating state.
+   - Pass `null` if the file is empty or the proc takes no parameters
 2. Call `execute_sp` with `spName = proc_name`, the extracted parameters, and `outputFilePath = /tmp/opt_candidate_<tc_dir>.csv`
 3. Run: `python optimize/compare_csv.py optimize/test_cases/<tc_dir>/golden_output.csv /tmp/opt_candidate_<tc_dir>.csv`
 4. If the script exits non-zero, capture its output as the diff summary — this test case failed
@@ -100,7 +99,7 @@ For each test case:
 ## Step 7 — Benchmark
 
 For each test case:
-1. Extract parameters the same way as Step 6 (same hard-stop rule applies).
+1. Read `params.sql` directly — same format and hard-stop rule as Step 6.
 2. Call `run_benchmark` with `spName = proc_name` and those parameters, **`n_runs + 1` times**.
 3. **Discard the first call's result** (warm-up run — absorbs plan compilation cost).
 4. For each of the remaining `n_runs` calls, parse the STATISTICS output:

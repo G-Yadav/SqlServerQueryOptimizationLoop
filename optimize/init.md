@@ -42,10 +42,9 @@ Write the content of `optimize/initial_sp.sql` to:
 Find all test case directories: `optimize/test_cases/tc_*/`, sorted by name. For each one, verify that `params.sql` exists. If no test cases are found, stop and tell the user to create at least one test case under `optimize/test_cases/tc_01/params.sql`.
 
 For each test case:
-1. Read its `params.sql` and extract the parameter values from the `EXEC` statement as a comma-separated `@param=value` string.
-   - Strip surrounding single-quotes from string values only if the value contains no commas or equals signs
-   - **Hard stop:** if any parameter value (after removing quotes) contains a comma or equals sign, stop immediately: `PARAMETER ERROR: value in <tc_dir>/params.sql cannot be safely passed (contains comma or equals sign).`
-   - Pass `null` if the proc takes no parameters
+1. Read `params.sql` — the file contains a raw semicolon-separated `@param=value` string (e.g. `@BusinessEntityID=2;@MaxDepth=3`), or is empty/absent if the proc takes no parameters.
+   - **Hard stop:** if any parameter value contains a semicolon, stop immediately: `PARAMETER ERROR: value in <tc_dir>/params.sql cannot be safely passed (contains semicolon).`
+   - Pass `null` if the file is empty or the proc takes no parameters
 2. Call `execute_sp` with `spName = proc_name`, the extracted parameters, and `outputFilePath = optimize/test_cases/<tc_dir>/golden_output.csv`
 3. Print: `<tc_dir>: <N> row(s) captured` (the row count is in the tool's return value)
 
@@ -54,7 +53,7 @@ For each test case:
 ## Step 5 — Benchmark the initial SP
 
 For each test case (same order as Step 4):
-1. Extract parameters the same way as Step 4 (same hard-stop rule applies).
+1. Read `params.sql` directly — same format and hard-stop rule as Step 4.
 2. Call `run_benchmark` with `spName = proc_name` and those parameters, **`n_runs + 1` times**.
 3. **Discard the first call's result** (warm-up run — absorbs plan compilation cost).
 4. For each of the remaining `n_runs` calls, parse the STATISTICS output:

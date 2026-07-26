@@ -40,7 +40,7 @@ The MCP server exposes eight tools over stdio (ModelContextProtocol 2.0 preview)
 | `get_table_ddl` | Retrieve table DDL: columns, types, PK, unique constraints, indexes, foreign keys |
 | `get_row_count` | Return exact row count for a table or view |
 
-`deploy_sp` rejects SQL that doesn't start with `ALTER PROCEDURE` or `CREATE OR ALTER PROCEDURE`. Parameters for `execute_sp` and `run_benchmark` are passed as comma-separated `@param=value` strings — values containing commas or equals signs cannot be safely passed and will cause a hard stop.
+`deploy_sp` rejects SQL that doesn't start with `ALTER PROCEDURE` or `CREATE OR ALTER PROCEDURE`. Parameters for `execute_sp` and `run_benchmark` are passed as semicolon-separated `@param=value` strings (e.g. `@BusinessEntityID=2;@MaxDepth=3`) — values containing semicolons cannot be safely passed and will cause a hard stop.
 
 ## Running the Optimization Loop
 
@@ -48,10 +48,10 @@ The MCP server exposes eight tools over stdio (ModelContextProtocol 2.0 preview)
 
 1. Paste your stored procedure into `optimize/initial_sp.sql` (must start with `CREATE OR ALTER PROCEDURE`)
 2. Set `proc_name`, `n_runs`, `max_iterations`, `max_consecutive_failures` in `optimize/config.json`
-3. Add at least one test case: `optimize/test_cases/tc_01/params.sql` containing `EXEC dbo.YourProc @param=value`
+3. Add at least one test case: `optimize/test_cases/tc_01/params.sql` containing the raw semicolon-separated parameter string (e.g. `@BusinessEntityID=2`), or leave empty if the proc takes no parameters
 4. Ask Claude to follow `optimize/init.md`
 
-Init deploys the SP, captures golden CSV output per test case via `execute_sp`, benchmarks the baseline (`n_runs + 1` calls, first discarded), writes `optimize/state.json` and `optimize/benchmark_log.md`.
+Init deploys the SP, captures golden CSV output per test case via `execute_sp` (written directly to file), benchmarks the baseline (`n_runs + 1` calls, first discarded), and writes `optimize/state.json`.
 
 ### Running iterations
 

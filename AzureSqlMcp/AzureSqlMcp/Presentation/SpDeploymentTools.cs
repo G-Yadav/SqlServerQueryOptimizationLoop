@@ -7,9 +7,9 @@ namespace AzureSqlMcp.Presentation;
 [McpServerToolType]
 public class SpDeploymentTools(ISpDeploymentRepository repo)
 {
-    [McpServerTool, Description("Deploys a stored procedure to the database. The SQL must start with ALTER PROCEDURE or CREATE OR ALTER PROCEDURE.")]
+    [McpServerTool, Description("Deploys a stored procedure to the database. The SQL must start with ALTER PROCEDURE.")]
     public async Task<string> DeploySp(
-        [Description("The full T-SQL ALTER PROCEDURE or CREATE OR ALTER PROCEDURE statement to execute.")] string sql,
+        [Description("The full T-SQL ALTER PROCEDURE statement to execute.")] string sql,
         CancellationToken ct = default)
     {
         try

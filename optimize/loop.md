@@ -55,7 +55,7 @@ Write 1–2 sentences stating your hypothesis and why you expect it to reduce lo
 Write your optimized stored procedure to `optimize/candidate_sp.sql`.
 
 Rules:
-- Use exactly `CREATE OR ALTER PROCEDURE <proc_name>` as the header — `proc_name` comes from `config.json`
+- Use exactly `ALTER PROCEDURE <proc_name>` as the header — `proc_name` comes from `config.json`
 - Keep all original parameters and their data types
 - Only modify the body
 

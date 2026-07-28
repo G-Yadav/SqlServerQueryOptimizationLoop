@@ -31,7 +31,7 @@ The MCP server exposes eight tools over stdio (ModelContextProtocol 2.0 preview)
 
 | Tool | Purpose |
 |---|---|
-| `deploy_sp` | Deploy `CREATE OR ALTER PROCEDURE` or `ALTER PROCEDURE` SQL |
+| `deploy_sp` | Deploy `ALTER PROCEDURE` SQL |
 | `execute_sp` | Run a proc and return result set as CSV (correctness checks) |
 | `run_benchmark` | Run a proc with `SET STATISTICS IO/TIME ON` and return raw output |
 | `get_execution_plan` | Run a proc and return the actual XML execution plan with runtime statistics |
@@ -40,13 +40,13 @@ The MCP server exposes eight tools over stdio (ModelContextProtocol 2.0 preview)
 | `get_table_ddl` | Retrieve table DDL: columns, types, PK, unique constraints, indexes, foreign keys |
 | `get_row_count` | Return exact row count for a table or view |
 
-`deploy_sp` rejects SQL that doesn't start with `ALTER PROCEDURE` or `CREATE OR ALTER PROCEDURE`. Parameters for `execute_sp` and `run_benchmark` are passed as semicolon-separated `@param=value` strings (e.g. `@BusinessEntityID=2;@MaxDepth=3`) — values containing semicolons cannot be safely passed and will cause a hard stop.
+`deploy_sp` rejects SQL that doesn't start with `ALTER PROCEDURE`. Parameters for `execute_sp` and `run_benchmark` are passed as semicolon-separated `@param=value` strings (e.g. `@BusinessEntityID=2;@MaxDepth=3`) — values containing semicolons cannot be safely passed and will cause a hard stop.
 
 ## Running the Optimization Loop
 
 ### One-time setup
 
-1. Paste your stored procedure into `optimize/initial_sp.sql` (must start with `CREATE OR ALTER PROCEDURE`)
+1. Paste your stored procedure into `optimize/initial_sp.sql` (must start with `ALTER PROCEDURE`)
 2. Set `proc_name`, `n_runs`, `max_iterations`, `max_consecutive_failures` in `optimize/config.json`
 3. Add at least one test case: `optimize/test_cases/tc_01/params.sql` containing the raw semicolon-separated parameter string (e.g. `@BusinessEntityID=2`), or leave empty if the proc takes no parameters
 4. Ask Claude to follow `optimize/init.md`
@@ -59,9 +59,7 @@ Init deploys the SP, captures golden CSV output per test case via `execute_sp` (
 /loop optimize/loop.md
 ```
 
-Each iteration: reads state → generates one hypothesis → deploys as `<proc_name>_opt_test` → correctness diff vs golden CSV → benchmark → accepts (≥ 0.5% improvement) or rejects → writes versioned skill snapshot.
-
-**The real proc is never touched until a candidate is accepted.** On rejection or correctness failure, no rollback is needed.
+Each iteration: reads state → generates one hypothesis → deploys candidate directly over the real proc → correctness diff vs golden CSV → benchmark → accepts (≥ 0.5% improvement) or rejects → appends to `findings.md`. On rejection or correctness failure, the real proc is restored from `current_sp.sql`.
 
 ## State Files (auto-generated, do not edit manually)
 
@@ -70,12 +68,9 @@ Each iteration: reads state → generates one hypothesis → deploys as `<proc_n
 | `optimize/state.json` | Iteration counter, best score, techniques tried/succeeded |
 | `optimize/current_sp.sql` | Current best version of the SP |
 | `optimize/candidate_sp.sql` | LLM writes its proposed rewrite here each iteration |
-| `optimize/benchmark_log.md` | Per-iteration outcome log (technique name + score) |
 | `optimize/test_cases/tc_*/golden_output.csv` | Reference output captured during init |
-
-## Skill File Versioning
-
-`optimize/skills/` holds one snapshot per iteration: `iter_NN_sql_server_optimization.md`. `iter_00` is the seed (general SQL Server techniques checklist). After each iteration the loop reads the previous snapshot, appends a **Proc-Specific Findings** entry, and saves as `iter_NN` — the previous file is never overwritten. This lets you `diff iter_07.md iter_08.md` to see exactly what the loop learned in iteration 8.
+| `optimize/skills/techniques.md` | General SQL Server optimization reference (static) |
+| `optimize/skills/findings.md` | Append-only proc-specific findings written by the loop |
 
 ## Stopping Conditions
 

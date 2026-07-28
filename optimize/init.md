@@ -21,7 +21,7 @@ Read `optimize/initial_sp.sql`. If the file contains only the placeholder commen
 
 ## Step 2 — Deploy the initial stored procedure
 
-Read `optimize/initial_sp.sql`. Verify the DDL header starts with `CREATE OR ALTER PROCEDURE` or `ALTER PROCEDURE`. If it starts with `CREATE PROCEDURE` only, stop and tell the user to change it to `CREATE OR ALTER PROCEDURE`.
+Read `optimize/initial_sp.sql`. Verify the DDL header starts with `ALTER PROCEDURE`. If it doesn't, stop and tell the user to change it to `ALTER PROCEDURE`.
 
 Call `deploy_sp` with the full content of `initial_sp.sql`.
 

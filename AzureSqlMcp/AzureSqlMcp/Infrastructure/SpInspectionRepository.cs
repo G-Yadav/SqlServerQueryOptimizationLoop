@@ -24,9 +24,8 @@ public class SpInspectionRepository(ISqlConnectionFactory db) : ISpInspectionRep
                 total_logical_reads / execution_count AS avg_logical_reads,
                 total_worker_time / execution_count AS avg_cpu_us,
                 last_execution_time
-            FROM sys.dm_exec_procedure_stats ps
-            JOIN sys.objects o ON ps.object_id = o.object_id
-            WHERE o.name = @name", conn);
+            FROM sys.dm_exec_procedure_stats
+            WHERE object_id = OBJECT_ID(@name)", conn);
         cmd.Parameters.AddWithValue("@name", spName);
         await using var r = await cmd.ExecuteReaderAsync(ct);
         if (!await r.ReadAsync(ct)) return null;

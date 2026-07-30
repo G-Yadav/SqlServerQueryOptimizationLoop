@@ -160,7 +160,7 @@ public class TableSchemaRepository(ISqlConnectionFactory db) : ITableSchemaRepos
             JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id AND ic.is_included_column = 0
             JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
             WHERE i.object_id = @id AND i.type > 0 AND i.is_primary_key = 0 AND i.is_unique_constraint = 0
-            GROUP BY i.name, i.type_desc, i.is_unique, i.index_id", conn);
+            GROUP BY i.object_id, i.name, i.type_desc, i.is_unique, i.index_id", conn);
         cmd.Parameters.AddWithValue("@id", objectId);
 
         var defs = new List<IndexDef>();

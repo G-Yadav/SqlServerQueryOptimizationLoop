@@ -18,6 +18,7 @@ builder.Services.AddOptions<SqlConnectionOptions>()
 
 // Infrastructure
 builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
+builder.Services.AddSingleton<IStatisticsParser, StatisticsParser>();
 builder.Services.AddSingleton<ITableSchemaRepository, TableSchemaRepository>();
 builder.Services.AddSingleton<ISpInspectionRepository, SpInspectionRepository>();
 builder.Services.AddSingleton<ISpDeploymentRepository, SpDeploymentRepository>();

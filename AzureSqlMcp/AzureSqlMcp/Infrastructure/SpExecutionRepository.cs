@@ -6,10 +6,43 @@ using Microsoft.Data.SqlClient;
 
 namespace AzureSqlMcp.Infrastructure;
 
-public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepository
+public class SpExecutionRepository(ISqlConnectionFactory db, IStatisticsParser parser) : ISpExecutionRepository
 {
-    public async Task<string> RunBenchmarkAsync(string spName, string? parameters, CancellationToken ct = default)
+    public async Task<string> RunBenchmarkAsync(string spName, string? parameters, int nRuns = 1, CancellationToken ct = default)
     {
+        var stats = await BenchmarkAsync(spName, parameters, nRuns, ct);
+        return stats is { } s ? Format(s) : "No statistics returned.";
+    }
+
+    public async Task<string> RunBenchmarkBatchAsync(string spName, IReadOnlyList<string?> parameterSets, int nRuns = 1, CancellationToken ct = default)
+    {
+        if (parameterSets.Count == 0) return "No parameter sets provided.";
+
+        var lines = new StringBuilder();
+        long totalLogicalReads = 0;
+        for (var i = 0; i < parameterSets.Count; i++)
+        {
+            var stats = await BenchmarkAsync(spName, parameterSets[i], nRuns, ct);
+            if (stats is { } s)
+            {
+                totalLogicalReads += s.LogicalReads;
+                lines.AppendLine($"run_{i + 1}: {Format(s)}");
+            }
+            else
+            {
+                lines.AppendLine($"run_{i + 1}: no statistics returned");
+            }
+        }
+        lines.Append($"total_logical_reads={totalLogicalReads}");
+        return lines.ToString();
+    }
+
+    // Runs the proc nRuns+1 times on a single connection, discards the warm-up run, parses each
+    // measured run's STATISTICS output via the shared parser, and averages the results.
+    private async Task<BenchmarkStats?> BenchmarkAsync(string spName, string? parameters, int nRuns, CancellationToken ct)
+    {
+        if (nRuns < 1) nRuns = 1;
+
         await using var conn = await db.OpenConnectionAsync(ct);
         var cmd = new SqlCommand(spName, conn) { CommandType = CommandType.StoredProcedure };
         AddParameters(cmd, parameters);
@@ -18,11 +51,31 @@ public class SpExecutionRepository(ISqlConnectionFactory db) : ISpExecutionRepos
         conn.InfoMessage += (_, e) => messages.AppendLine(e.Message);
 
         await new SqlCommand("SET STATISTICS IO ON; SET STATISTICS TIME ON;", conn).ExecuteNonQueryAsync(ct);
-        try   { await cmd.ExecuteNonQueryAsync(ct); }
-        finally { await new SqlCommand("SET STATISTICS IO OFF; SET STATISTICS TIME OFF;", conn).ExecuteNonQueryAsync(CancellationToken.None); }
+        var runs = new List<BenchmarkStats>(nRuns);
+        try
+        {
+            for (var i = 0; i <= nRuns; i++)
+            {
+                var start = messages.Length;
+                await cmd.ExecuteNonQueryAsync(ct);
+                if (i == 0) continue; // discard warm-up (absorbs plan compilation cost)
+                runs.Add(parser.Parse(messages.ToString(start, messages.Length - start)));
+            }
+        }
+        finally
+        {
+            await new SqlCommand("SET STATISTICS IO OFF; SET STATISTICS TIME OFF;", conn).ExecuteNonQueryAsync(CancellationToken.None);
+        }
 
-        return messages.Length > 0 ? messages.ToString() : "No statistics returned.";
+        if (runs.Count == 0) return null;
+        return new BenchmarkStats(
+            (long)Math.Round(runs.Average(r => (double)r.LogicalReads)),
+            (long)Math.Round(runs.Average(r => (double)r.CpuMs)),
+            (long)Math.Round(runs.Average(r => (double)r.ElapsedMs)));
     }
+
+    private static string Format(BenchmarkStats s) =>
+        $"logical_reads={s.LogicalReads}, cpu_ms={s.CpuMs}, elapsed_ms={s.ElapsedMs}";
 
     public async Task<string> ExecuteSpAsync(string spName, string? parameters, string? outputFilePath = null, CancellationToken ct = default)
     {

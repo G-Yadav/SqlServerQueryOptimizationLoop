@@ -52,18 +52,18 @@ For each test case:
 
 ## Step 5 — Benchmark the initial SP
 
-For each test case (same order as Step 4):
-1. Read `params.sql` directly — same format and hard-stop rule as Step 4.
-2. Call `run_benchmark` with `spName = proc_name` and those parameters, **`n_runs + 1` times**.
-3. **Discard the first call's result** (warm-up run — absorbs plan compilation cost).
-4. For each of the remaining `n_runs` calls, parse the STATISTICS output:
-   - Logical reads: sum all matches of `logical reads (\d+)` (case-insensitive)
-   - CPU time ms: match `CPU time = (\d+) ms`
-   - Elapsed time ms: match `elapsed time = (\d+) ms`
-5. Average the `n_runs` results for this test case.
-6. Print: `<tc_dir>: <avg_lr> logical reads | <avg_cpu>ms CPU | <avg_elapsed>ms elapsed`
+Read each test case's `params.sql` in the same sorted order as Step 4 — same format and hard-stop rule as Step 4.
 
-Sum `logical_reads` across all test cases → `baseline_total_lr`.
+Make a single `benchmark_all` call:
+- `spName = proc_name`
+- `parameterSets` = the test cases' parameter strings joined by newlines, in sorted order — one line per test case, in the Step 4 order. Use a blank line for a test case that takes no parameters.
+- `nRuns = config.n_runs`
+
+The server runs each set `n_runs + 1` times (discarding the warm-up), parses and averages the STATISTICS output, and returns one line per test case (`run_1`, `run_2`, … matching the input order) as `logical_reads=N, cpu_ms=N, elapsed_ms=N`, followed by `total_logical_reads=N`.
+
+Map each `run_i` back to its test case by position and print: `<tc_dir>: <lr> logical reads | <cpu>ms CPU | <elapsed>ms elapsed`.
+
+Set `baseline_total_lr` = the returned `total_logical_reads`.
 
 Print: `Baseline total logical reads: <baseline_total_lr>`
 

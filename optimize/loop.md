@@ -4,6 +4,16 @@ Your goal: make the stored procedure faster without changing its output on any t
 
 ---
 
+## Step 0 — Restore the known-good proc
+
+Before reading state, guarantee the live proc matches the current best version. If a previous iteration was interrupted between deploy (Step 5) and accept/reject (Step 8) — by a crash, context compaction, or manual stop — the database may still hold an unverified candidate while `current_sp.sql` reflects the last accepted version.
+
+- Read `optimize/current_sp.sql` and call `deploy_sp` with its full content.
+- If `optimize/current_sp.sql` does not exist, the loop has not been initialised — output `LOOP ERROR: optimize/current_sp.sql not found — run optimize/init.md first.` and stop.
+- This is idempotent (`ALTER PROCEDURE`); on a clean start it re-deploys the same definition and costs nothing.
+
+---
+
 ## Step 1 — Read current state
 
 Read ALL of the following before doing anything else:

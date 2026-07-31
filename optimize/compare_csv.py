@@ -2,7 +2,7 @@
 """
 Compare two CSV files produced by execute_sp for correctness verification.
 
-Usage: python compare_csv.py <golden_path> <candidate_path>
+Usage: python3 compare_csv.py <golden_path> <candidate_path>
 
 Exit codes:
   0 - files match

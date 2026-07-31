@@ -16,8 +16,8 @@ All tool schemas are sent to the client on `tools/list` during initialization. F
 
 ## Optimization Loop
 
-### `python` → `python3` in loop.md and init.md
-Both files call `python optimize/compare_csv.py` for correctness diffs. macOS does not ship a `python` binary — only `python3`. Any machine without an explicit `python` alias will hit a hard stop mid-iteration with no meaningful error. Change both call sites to `python3`.
+### ~~`python` → `python3` in loop.md and init.md~~ ✅ Done
+`loop.md` Step 6 called `python optimize/compare_csv.py` for correctness diffs. macOS does not ship a `python` binary — only `python3` — so any machine without an explicit `python` alias would hit a hard stop mid-iteration with no meaningful error. **Resolved** by changing the call site in `loop.md` to `python3` (and the usage docstring in `compare_csv.py`). Note: `init.md` never referenced `compare_csv`, so only `loop.md` needed the fix.
 
 ### Mid-iteration interruption leaves proc in candidate state
 If context compaction or a crash occurs between Step 5 (deploy candidate) and Step 6 (correctness check), the live proc is left as the candidate while `state.json` and `current_sp.sql` still reflect the previous accepted version. On next restart the loop reads `current_sp.sql` but that no longer matches what is deployed. Fix: add a Step 0 at the top of `loop.md` that always calls `deploy_sp` with the content of `current_sp.sql` before reading state, guaranteeing the live proc is known-good at the start of every iteration.

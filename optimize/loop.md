@@ -84,7 +84,7 @@ For each test case:
    - **Hard stop:** if any parameter value contains a semicolon, output: `PARAMETER ERROR: value in <tc_dir>/params.sql cannot be safely passed (contains semicolon).` Then stop without updating state.
    - Pass `null` if the file is empty or the proc takes no parameters
 2. Call `execute_sp` with `spName = proc_name`, the extracted parameters, and `outputFilePath = /tmp/opt_candidate_<tc_dir>.csv`
-3. Run: `python optimize/compare_csv.py optimize/test_cases/<tc_dir>/golden_output.csv /tmp/opt_candidate_<tc_dir>.csv`
+3. Run: `python3 optimize/compare_csv.py optimize/test_cases/<tc_dir>/golden_output.csv /tmp/opt_candidate_<tc_dir>.csv`
 4. If the script exits non-zero, capture its output as the diff summary — this test case failed
 
 **On any correctness failure:**

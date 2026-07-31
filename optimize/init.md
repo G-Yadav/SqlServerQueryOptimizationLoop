@@ -43,6 +43,7 @@ Find all test case directories: `optimize/test_cases/tc_*/`, sorted by name. For
 
 For each test case:
 1. Read `params.sql` — the file contains a raw semicolon-separated `@param=value` string (e.g. `@BusinessEntityID=2;@MaxDepth=3`), or is empty/absent if the proc takes no parameters.
+   - **Format hard stop:** after stripping whitespace, if the content is non-empty and is not in the raw `@param=value` form — i.e. it begins with `--` or `/*` (a SQL comment), contains `EXEC` or `EXECUTE` (case-insensitive), or its first non-whitespace character is not `@` — stop immediately: `PARAMETER FORMAT ERROR: <tc_dir>/params.sql must contain a raw semicolon-separated @param=value string (e.g. @BusinessEntityID=2;@MaxDepth=3), not an EXEC statement, SQL comment, or other SQL. Fix the file and re-run init.` This catches the common mistake of pasting an `EXEC dbo.Proc @p=1` call, which would otherwise be sent as a wrong-parameter call with no error.
    - **Hard stop:** if any parameter value contains a semicolon, stop immediately: `PARAMETER ERROR: value in <tc_dir>/params.sql cannot be safely passed (contains semicolon).`
    - Pass `null` if the file is empty or the proc takes no parameters
 2. Call `execute_sp` with `spName = proc_name`, the extracted parameters, and `outputFilePath = optimize/test_cases/<tc_dir>/golden_output.csv`

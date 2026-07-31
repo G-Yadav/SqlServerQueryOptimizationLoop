@@ -28,8 +28,8 @@ If context compaction or a crash occurred between Step 5 (deploy candidate) and 
 ### ~~Benchmark calls should be parallelised across test cases~~ ✅ Superseded
 The per-test-case calls are now collapsed into a single `benchmark_all` call per benchmark round (see above), so there is nothing left to parallelise at the loop level. If server-side wall-clock time becomes a concern, the batch loop inside `RunBenchmarkBatchAsync` could run sets concurrently on separate connections — but each set still needs its own connection to keep STATISTICS output isolated.
 
-### `params.sql` format is not validated at init time
-`init.md` expects `params.sql` to contain a raw `@param=value` semicolon-separated string. Users naturally write EXEC statements. The mismatch causes a wrong-parameter call with no error. `init.md` Step 4 should check the file for `EXEC` or SQL comment prefixes and tell the user the expected format before proceeding.
+### ~~`params.sql` format is not validated at init time~~ ✅ Done
+`init.md` expects `params.sql` to contain a raw `@param=value` semicolon-separated string, but users naturally write `EXEC` statements — a mismatch that caused a wrong-parameter call with no error. **Resolved** by adding a format hard-stop to `init.md` Step 4: after stripping whitespace, a non-empty file that isn't in raw `@param=value` form (begins with `--`/`/*`, contains `EXEC`/`EXECUTE`, or its first non-whitespace char isn't `@`) stops init with `PARAMETER FORMAT ERROR: …` and the expected format. Validation lives at init time (the setup gate); the loop reuses the already-validated files.
 
 ### `init.md` should auto-populate `initial_sp.sql` from the database
 Step 2 requires the user to manually paste the procedure into `initial_sp.sql`, then immediately deploys it — but the proc is already in the database. `init.md` could call `get_sp_definition` using `proc_name` from `config.json`, write the result (with `CREATE` replaced by `ALTER`) to `initial_sp.sql`, and skip the manual paste. The manual paste step would only be needed when the proc does not yet exist in the database.

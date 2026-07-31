@@ -49,10 +49,11 @@ The MCP server exposes nine tools over stdio (ModelContextProtocol 2.0 preview):
 
 ### One-time setup
 
-1. Paste your stored procedure into `optimize/initial_sp.sql` (must start with `ALTER PROCEDURE`)
-2. Set `proc_name`, `n_runs`, `max_iterations`, `max_consecutive_failures` in `optimize/config.json`
-3. Add at least one test case: `optimize/test_cases/tc_01/params.sql` containing the raw semicolon-separated parameter string (e.g. `@BusinessEntityID=2`), or leave empty if the proc takes no parameters
-4. Ask Claude to follow `optimize/init.md`
+1. Set `proc_name`, `n_runs`, `max_iterations`, `max_consecutive_failures` in `optimize/config.json`
+2. Add at least one test case: `optimize/test_cases/tc_01/params.sql` containing the raw semicolon-separated parameter string (e.g. `@BusinessEntityID=2`), or leave empty if the proc takes no parameters
+3. Ask Claude to follow `optimize/init.md`
+
+You don't paste the procedure anywhere — init populates `optimize/initial_sp.sql` from the database via `get_sp_definition` (`CREATE` → `ALTER`). The proc must already exist in the database, since `deploy_sp` can only `ALTER` an existing proc.
 
 Init deploys the SP, captures golden CSV output per test case via `execute_sp` (written directly to file), benchmarks the baseline (`n_runs + 1` calls, first discarded), and writes `optimize/state.json`.
 

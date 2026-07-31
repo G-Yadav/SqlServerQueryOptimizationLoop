@@ -15,17 +15,21 @@ If any field is still a placeholder, stop and tell the user which fields need fi
 
 Verify that the `AZURE_CONN_STRING` environment variable is set (non-empty). If not, stop and tell the user to set it before running init.
 
-Read `optimize/initial_sp.sql`. If the file contains only the placeholder comment (content starts with `--` after stripping whitespace), stop and tell the user to paste their stored procedure into the file.
+(`optimize/initial_sp.sql` is populated from the database in Step 2 — no manual paste needed.)
 
 ---
 
-## Step 2 — Deploy the initial stored procedure
+## Step 2 — Fetch and deploy the initial stored procedure
 
-Read `optimize/initial_sp.sql`. Verify the DDL header starts with `ALTER PROCEDURE`. If it doesn't, stop and tell the user to change it to `ALTER PROCEDURE`.
+Always populate `initial_sp.sql` from the database — it is the source of truth for the live proc, and `deploy_sp` can only `ALTER` a proc that already exists.
+
+1. Call `get_sp_definition` with `spName = proc_name`.
+2. If it returns `Not found` (or an empty definition), the proc does not exist in the database. `deploy_sp` cannot create it, so stop and tell the user to create the procedure in the database first, then re-run init.
+3. Replace the leading `CREATE` keyword of the `CREATE PROCEDURE` statement with `ALTER` (case-insensitive, first occurrence only — leave any later `CREATE` in the body untouched). Write the result to `optimize/initial_sp.sql`, then print: `Populated initial_sp.sql from the database (CREATE → ALTER).`
 
 Call `deploy_sp` with the full content of `initial_sp.sql`.
 
-If deployment fails, stop and show the error. The user must fix the SQL before continuing.
+If deployment fails, stop and show the error.
 
 ---
 

@@ -12,6 +12,13 @@ This repo is an **autonomous SQL Server stored procedure optimization loop**. Cl
 - `AZURE_CONN_STRING` environment variable — valid ADO.NET connection string to Azure SQL or SQL Server
 - Claude Code with the AzureSqlMcp MCP server configured in `.claude/settings.json`
 
+### Entra ID / MFA authentication (optional)
+
+Two ways to authenticate with Microsoft Entra ID instead of a SQL login:
+
+1. **Connection string only** — put an Entra auth mode directly in `AZURE_CONN_STRING`, e.g. `…;Authentication=Active Directory Interactive` or `Active Directory Device Code Flow`. `SqlClient` handles the MFA prompt and token refresh. No extra config; the prompt/device-code lands on the server's stderr.
+2. **Token command** (`AZURE_TOKEN_COMMAND`) — for a headless, long-running loop. Set it to a shell command that prints an access token for the SQL resource, e.g. `az account get-access-token --resource https://database.windows.net/ --output json`. MFA is satisfied once out-of-band (e.g. a prior `az login`); the server runs the command to mint tokens and re-runs it to refresh ~5 min before expiry (parsing `accessToken`/`expires_on` from az JSON, or treating bare stdout as the token with a ~55 min default TTL). When `AZURE_TOKEN_COMMAND` is set, `AZURE_CONN_STRING` **must not** contain `Authentication`, `User ID`, or `Password` — they conflict with the access token, and startup fails fast if both are present. The token is applied via `SqlConnection.AccessToken`; the command is read from the environment only, never a tool parameter.
+
 ## C# Conventions
 
 Follow `CODING_GUIDELINES.md` for all C# work in this repo. Key points: SOLID principles, `await using` for all disposables, one reader open per connection at a time, return error strings from tool methods (don't throw), and extract any logic shared by two or more methods into a private helper immediately.

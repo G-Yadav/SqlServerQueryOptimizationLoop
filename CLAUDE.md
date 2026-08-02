@@ -41,7 +41,7 @@ The MCP server exposes nine tools over stdio (ModelContextProtocol 2.0 preview):
 | `get_table_ddl` | Retrieve table DDL: columns, types, PK, unique constraints, indexes, foreign keys |
 | `get_row_count` | Return exact row count for a table or view |
 
-`deploy_sp` rejects SQL that doesn't start with `ALTER PROCEDURE`. Parameters for `execute_sp` and `run_benchmark` are passed as semicolon-separated `@param=value` strings (e.g. `@BusinessEntityID=2;@MaxDepth=3`) — values containing semicolons cannot be safely passed and will cause a hard stop. `benchmark_all` takes the same per-set format, with one set per line (newline-separated).
+`deploy_sp` rejects SQL that doesn't start with `ALTER PROCEDURE`, matches a disallowed-pattern blocklist (`xp_cmdshell`, `OPENROWSET`/`OPENQUERY`/`OPENDATASOURCE`, `BULK INSERT`, `sp_OA*`, `DROP`), or contains a `DELETE` whose target is not a temp table (`#…`/`##…`) or table variable (`@…`) — deletes against persistent tables are blocked. Parameters for `execute_sp` and `run_benchmark` are passed as semicolon-separated `@param=value` strings (e.g. `@BusinessEntityID=2;@MaxDepth=3`) — values containing semicolons cannot be safely passed and will cause a hard stop. `benchmark_all` takes the same per-set format, with one set per line (newline-separated).
 
 `run_benchmark` and `benchmark_all` parse `SET STATISTICS IO/TIME` output **server-side** — the raw STATISTICS text never reaches the model. Parsing runs the vendored open-source STATISTICS parser (`Infrastructure/Resources/StatsParser/parser.js`) in-process via Jint; there is no Node dependency.
 

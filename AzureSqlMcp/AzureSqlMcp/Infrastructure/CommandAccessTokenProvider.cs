@@ -59,13 +59,24 @@ public sealed class CommandAccessTokenProvider : IAccessTokenProvider, IDisposab
         var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         var psi = new ProcessStartInfo
         {
-            FileName = isWindows ? "cmd.exe" : "/bin/sh",
+            // Windows PowerShell (5.1, always present); -NonInteractive turns a prompt-happy
+            // command (e.g. az needing re-login) into a fast failure instead of a hang.
+            FileName = isWindows ? "powershell.exe" : "/bin/sh",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        psi.ArgumentList.Add(isWindows ? "/c" : "-c");
+        if (isWindows)
+        {
+            psi.ArgumentList.Add("-NoProfile");
+            psi.ArgumentList.Add("-NonInteractive");
+            psi.ArgumentList.Add("-Command");
+        }
+        else
+        {
+            psi.ArgumentList.Add("-c");
+        }
         psi.ArgumentList.Add(command);
 
         using var process = new Process { StartInfo = psi };
@@ -94,14 +105,19 @@ public sealed class CommandAccessTokenProvider : IAccessTokenProvider, IDisposab
         if (process.ExitCode != 0)
             throw new InvalidOperationException($"Token command exited with code {process.ExitCode}: {stderr.Trim()}");
 
+        // PowerShell -Command does not always surface a native command's non-zero exit code, so an
+        // az failure can arrive as exit 0 with empty stdout — include stderr to keep it diagnosable.
+        if (stdout.Trim().Length == 0)
+            throw new InvalidOperationException(
+                "Token command produced no output." +
+                (string.IsNullOrWhiteSpace(stderr) ? string.Empty : $" stderr: {stderr.Trim()}"));
+
         return Parse(stdout);
     }
 
     private static (string Token, DateTimeOffset ExpiresAtUtc) Parse(string stdout)
     {
         var text = stdout.Trim();
-        if (text.Length == 0)
-            throw new InvalidOperationException("Token command produced no output.");
 
         // Preferred: JSON from `az account get-access-token` — { accessToken, expires_on, ... }
         if (text.StartsWith('{'))
